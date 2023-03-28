@@ -1286,38 +1286,42 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
     int retval = 1;
     int omega = 13;
     BPU_T_GF2_Poly syndrom;
-    uint16_t w = ctx->code_spec->qcmdpc->w;             // pozor ci sedi w
+    uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
     uint32_t n = ctx->code_spec->qcmdpc->H.n; // 4801
     int8_t ** V_to_C = BPU_mecsAllocMatrixInt8t(k, n);
+
     if (NULL == V_to_C) {
         BPU_printError("CHYBA ALOKACIE");
-        return 1;
+        retval = 1;
+        goto end1;
     }
     int8_t ** C_to_V = BPU_mecsAllocMatrixInt8t(k, n);
     if (NULL == C_to_V) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
         BPU_printError("CHYBA ALOKACIE");
-        return 1;
+        retval = 1;
+        goto end2;
     }
     uint32_t ** H_transp = BPU_mecsAllocMatrixUint32t(n, w);
     if (NULL == H_transp) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_mecsFreeMatrixInt8t(C_to_V, k);
         BPU_printError("CHYBA ALOKACIE");
-        return 1;
+        retval = 1;
+        goto end3;
     }
     uint32_t ** H = BPU_mecsAllocMatrixUint32t(k, w/2);
     if (NULL == H) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_mecsFreeMatrixInt8t(C_to_V, k);
-        BPU_mecsFreeMatrixUint32t(H_transp, n);
         BPU_printError("CHYBA ALOKACIE");
-        return 1;
+        retval = 1;
+        goto end4;
     }
 
     // create H_transp and H
-    uint32_t * last_indices_H_transp = (uint32_t *) calloc(n, sizeof(uint32_t)); // TODO check
+    uint32_t * last_indices_H_transp = (uint32_t *) calloc(n, sizeof(uint32_t));
+    if (NULL == last_indices_H_transp) {
+        BPU_printError("CHYBA ALOKACIE!");
+        retval = 1;
+        goto end5;
+    }
     for (uint32_t i = 0; i < k; ++i) {
         BPU_T_GF2_Sparse_Poly row;
         BPU_gf2SparseQcMatrixGetRow(&row, &ctx->code_spec->qcmdpc->H, (int)i);
@@ -1333,7 +1337,18 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
     free(last_indices_H_transp);
 
     int8_t *products_left = malloc(w*sizeof(int8_t));
+    if (NULL == products_left) {
+        BPU_printError("CHYBA ALOKACIE!");
+        retval = 1;
+        goto end5;
+    }
     int8_t *products_right = malloc(w*sizeof(int8_t));
+    if (NULL == products_right) {
+        BPU_printError("CHYBA ALOKACIE!");
+        retval = 1;
+        free(products_left);
+        goto end5;
+    }
 
     for (uint16_t i=0; i < cipher_text->len; i++){
         int8_t converted_bit = BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, i);
@@ -1380,8 +1395,8 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
             }
         }
     }
-    free(products_right);
     free(products_left);
+    free(products_right);
 
     for (uint32_t row = 0; row < k; ++row) { // teh final solution
         int sum = 0;
@@ -1402,13 +1417,20 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
     if(BPU_gf2PolyIsZero(&syndrom)){
         retval = 0;
     }
-    fprintf(stderr, "\n");
+
     // free
     BPU_gf2PolyFree(&syndrom , 0);
-    BPU_mecsFreeMatrixInt8t(V_to_C, k);
-    BPU_mecsFreeMatrixInt8t(C_to_V, k);
-    BPU_mecsFreeMatrixUint32t(H_transp, n);
+
+    // clean up
+    end5:
     BPU_mecsFreeMatrixUint32t(H, k);
+    end4:
+    BPU_mecsFreeMatrixUint32t(H_transp, n);
+    end3:
+    BPU_mecsFreeMatrixInt8t(C_to_V, k);
+    end2:
+    BPU_mecsFreeMatrixInt8t(V_to_C, k);
+    end1:
     return retval;
 }
 
