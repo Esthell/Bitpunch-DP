@@ -86,7 +86,7 @@ int BPU_mecsQcmdpcDecrypt(BPU_T_GF2_Vector * out, const BPU_T_GF2_Vector * in,
     BPU_gf2VecMalloc(&plainTextDecode,ctx->code_spec->qcmdpc->H.k);
     BPU_gf2VecNull(plainTextDecode);
 
-    if (!BPU_mecsQcmdpcDecodeREMP2(plainTextDecode, in, ctx)) {
+    if (!BPU_mecsQcmdpcDecodeE(plainTextDecode, in, ctx)) {
 
         for (i = 0; i < out->array_length; i++){
             out->elements[i] = plainTextDecode->elements[i];
@@ -1286,8 +1286,6 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
     int retval = 1;
     int omega = 13;
     BPU_T_GF2_Poly syndrom;
-    // BPU_T_GF2_Sparse_Qc_Matrix *H = &ctx->code_spec->qcmdpc->H;
-    // fprintf(stderr, "H      : k: %d, n: %d, isVertical:%d \n", H->k, H->n, H->isVertical);
     uint16_t w = ctx->code_spec->qcmdpc->w;             // pozor ci sedi w
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
     uint32_t n = ctx->code_spec->qcmdpc->H.n; // 4801
@@ -1334,21 +1332,8 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
     }
     free(last_indices_H_transp);
 
-    //fprintf(stderr, "H:\n");
-    /*for (size_t r = 0; r < k; ++r) {
-        for (size_t c = 0; c < w/2; ++c) {
-            fprintf(stderr, "%u ", H[r][c]);
-        }
-        fprintf(stderr, "\n");
-    }
-    fprintf(stderr, "\n");
-    fprintf(stderr, "H_transp:\n");*/
-    /*for (size_t r = 0; r < n; ++r) {
-        for (size_t c = 0; c < w; ++c) {
-            fprintf(stderr, "%u ", H_transp[r][c]);
-        }
-        fprintf(stderr, "\n");
-    }*/
+    int8_t *products_left = malloc(w*sizeof(int8_t));
+    int8_t *products_right = malloc(w*sizeof(int8_t));
 
     for (uint16_t i=0; i < cipher_text->len; i++){
         int8_t converted_bit = BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, i);
@@ -1357,31 +1342,31 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
         }
     }
     for (int iter = 0; iter < BPU_QCMDPC_PARAM_MAX_ITER_C; ++iter) {
-        fprintf(stderr, "Iteration: %u\n", iter);
         for (uint32_t col = 0; col < n; ++col) { // C -> V
             // Here, colum while indexing in H_transp is actually row, because H_transp is of type 4801x9602
-            // if(col%100 == 0){fprintf(stderr,"iter: %d,    col = %d \n", iter, col);}
-            /*for (uint32_t row = 0; row < k; ++row) {
-                int pi = 1;
-                for (uint32_t it = 0; it < w; ++it) {
 
-                    uint32_t idx = H_transp[col][it];
-                    if (idx == row) continue;
-                    pi *= V_to_C[row][idx];
-                }
-                fprintf(stderr, "col = %d, row = %d \n", col, row);
-                C_to_V[row][col] = (int8_t)pi;
-            }*/
+            // This solution is adapted from https://stackoverflow.com/a/2680697
+            // First, take the entire column of V_to_C as a row vector and construct products from left and from right
+            // products from left: 1, column[0], column[0]*column[1], column[0]*column[1]*column[2], ...
+            // products from right: ..., column[w-3]*column[w-2]*column[w-1], column[w-2]*column[w-1], column[w-1]
+            // then the message in i-th row is products_left[i]*products_right[i]
+            // this is done in two consecutive loops instead of two nested loops
+            int8_t tmp_left = 1;
+            int8_t tmp_right = 1;
+            for (uint32_t i = 0; i < w; ++i) {
+                uint32_t idx_left = H_transp[col][i];
+                uint32_t idx_right = H_transp[col][w - i - 1];
+                products_left[i] = tmp_left;
+                products_right[w - i - 1] = tmp_right;
+                tmp_left = (int8_t)(tmp_left*V_to_C[idx_left][col]);
+                tmp_right = (int8_t)(tmp_right*V_to_C[idx_right][col]);
+            }
             for (uint32_t row = 0; row < w; ++row) {
-                int pi = 1;
-                for (uint32_t it = 0; it < w; ++it) {
-                    if (it == row) continue;
-                    pi = pi * V_to_C[H_transp[col][it]][col];
-                }
-                C_to_V[H_transp[col][row]][col] = (int8_t)pi;
+                uint32_t idx = H_transp[col][row];
+                C_to_V[idx][col] = (int8_t)(products_left[row]*products_right[row]);
             }
         }
-        //fprintf(stderr,"iter: %d,  C -> V SENT!   \n", iter);
+
         for (uint32_t row = 0; row < k; ++row) { // V -> C
             int sum = 0;
             for (uint32_t col = 0; col < w/2; ++col) {
@@ -1394,38 +1379,29 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
                 V_to_C[row][H[row][col]] = (int8_t)((tmp > 0) - (tmp < 0));
             }
         }
-        //fprintf(stderr,"iter: %d,  V -> C SENT!   \n", iter);
     }
+    free(products_right);
+    free(products_left);
 
     for (uint32_t row = 0; row < k; ++row) { // teh final solution
         int sum = 0;
-        /*for (uint32_t col = 0; col < n; ++col) {
-            if (0 == H_transp[row][col]) continue;
-            sum += C_to_V[row][col];
-        }
-        sum += (omega * BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row));
-        BPU_gf2VecSetBit(plainTextVector, row, BPU_mecsQcmdpcConvertToCiphertextBit((int8_t)((sum > 0) - (sum < 0))));*/
         for (uint32_t col = 0; col < w/2; ++col) {
             sum = sum + C_to_V[row][H[row][col]];
-
         }
 
         int8_t tmp = (int8_t)((sum > 0) - (sum < 0));
         tmp = BPU_mecsQcmdpcConvertToCiphertextBit(tmp);
-        //fprintf(stderr, "TMP = %d\n", tmp);
         if(tmp == -1){
             tmp = BPU_gf2VecGetBit(cipher_text, row);
         }
         BPU_gf2VecSetBit(plainTextVector, row, tmp);
 
     }
-    //BPU_printGf2Vec(plainTextVector);
 
     BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
     if(BPU_gf2PolyIsZero(&syndrom)){
         retval = 0;
     }
-    //BPU_printGf2Vec(plainTextVector);
     fprintf(stderr, "\n");
     // free
     BPU_gf2PolyFree(&syndrom , 0);
