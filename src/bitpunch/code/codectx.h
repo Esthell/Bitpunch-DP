@@ -60,6 +60,7 @@ typedef struct _BPU_T_Code_Ctx {
     uint16_t code_len;          ///< Code len
     uint16_t msg_len;           ///< Code dimenzion
     uint8_t t;                  ///< Error code correction capability
+    uint8_t decoder_id;         ///< Decoder selection switch
 } BPU_T_Code_Ctx;
 
 /**

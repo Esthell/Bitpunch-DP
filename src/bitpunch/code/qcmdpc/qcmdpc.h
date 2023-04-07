@@ -198,6 +198,20 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
                           const BPU_T_GF2_Vector * cipher_text,
                           const struct _BPU_T_Code_Ctx *ctx);
 
+
+/**
+ * Decoding algorithm E for QC-MDPC codes capable of decode cipher_text.
+ * Algorithm E Variant 2 from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * @param  plainTextVector   output plaintext vector
+ * @param  cipher_text input cipher text
+ * @param  ctx 		   QC-MDPC McEliece context
+ * @return             0 if OK, else error
+ */
+int BPU_mecsQcmdpcDecodeE_2(BPU_T_GF2_Vector * plainTextVector,
+                          const BPU_T_GF2_Vector * cipher_text,
+                          const struct _BPU_T_Code_Ctx *ctx);
+
+
 /**
  * Decoding algorithm REMP-1 for QC-MDPC codes capable of decode cipher_text.
  * First Algorithm E modification from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
@@ -209,6 +223,21 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
 int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
                               const BPU_T_GF2_Vector * cipher_text,
                               const struct _BPU_T_Code_Ctx *ctx);
+
+/**
+ * Decoding algorithm REMP-1 for QC-MDPC codes capable of decode cipher_text.
+ * First Algorithm E modification (Variant 2) from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * @param  plainTextVector   output plaintext vector
+ * @param  cipher_text input cipher text
+ * @param  ctx 		   QC-MDPC McEliece context
+ * @return             0 if OK, else error
+ */
+int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
+                              const BPU_T_GF2_Vector * cipher_text,
+                              const struct _BPU_T_Code_Ctx *ctx);
+
+
+
 
 
 /**
@@ -222,6 +251,21 @@ int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
 int BPU_mecsQcmdpcDecodeREMP2(BPU_T_GF2_Vector * plainTextVector,
                               const BPU_T_GF2_Vector * cipher_text,
                               const struct _BPU_T_Code_Ctx *ctx);
+
+
+/**
+ * Decoding algorithm REMP-2 for QC-MDPC codes capable of decode cipher_text.
+ * Second Algorithm E modification (Variant 2)from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * @param  plainTextVector   output plaintext vector
+ * @param  cipher_text input cipher text
+ * @param  ctx 		   QC-MDPC McEliece context
+ * @return             0 if OK, else error
+ */
+int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
+                              const BPU_T_GF2_Vector * cipher_text,
+                              const struct _BPU_T_Code_Ctx *ctx);
+
+
 
 /**
  * Calc syndrom of cipher_text.

@@ -36,11 +36,11 @@ int BPU_mecsEncrypt(BPU_T_GF2_Vector * ct, const BPU_T_GF2_Vector * pt,
 }
 
 /**
- * Decrypt cipher text (ct) and save it to plain text. All strctures must be allocated before use.
+ * Decrypt cipher text (ct) and save it to plain text. All structures must be allocated before use.
  * @param  pt  plain text
  * @param  ct  cipher text
  * @param  ctx McEliece context
- * @return     0 - succes, else error
+ * @return     0 - success, else error
  */
 /// Decrypt cipher text (ct) and save it to plain text.
 int BPU_mecsDecrypt(BPU_T_GF2_Vector * pt, BPU_T_GF2_Vector * ct,

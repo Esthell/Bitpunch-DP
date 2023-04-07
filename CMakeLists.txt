@@ -9,6 +9,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "-Wall -Wextra -O2")
 
 add_definitions(-DBPU_CONF_FULL -DERROR_L)
+# uncomment to enable random generation of error vector in encryption
+# add_definitions(-DGENERATE_ERROR_VECTOR)
 
 
 set(SOURCES src/bitpunch/bitpunch.h

@@ -44,11 +44,13 @@ int BPU_mecsBasicEncrypt(BPU_T_GF2_Vector * out, const BPU_T_GF2_Vector * in,
     }
 
    // generate random error vector e
+#ifdef GENERATE_ERROR_VECTOR
     rc += BPU_gf2VecRand(e, ctx->code_ctx->t);
     if (rc) {
         BPU_printError("can not init rand vector");
         return rc;
     }
+#endif
 //     printf("error vector 3:\n");
 //    BPU_printGf2Vec(ctx->code_ctx->e);
 

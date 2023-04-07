@@ -333,7 +333,6 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
                 // generate error vector e    
                 if (BPU_gf2VecWithDist(ctx->code_ctx->e, ctx->code_ctx->t,d[i][j])) {
                     BPU_printError("can not init rand vector");
-
                     return 1;
                 }
                
@@ -464,8 +463,12 @@ int main(int argc, char **argv){
     BPU_T_GF2_Vector *ct, *oldpt, *newpt;
     char allocatedVectors = 0;
     srand(time(NULL));
-    if (BPU_mecsInitParamsQcmdpc(&params, 4801, 2, 90, 100)) {  // Tomaskove parametre pre bg dekoder: 11779, 2, 142, 134
-    //if (BPU_mecsInitParamsQcmdpc(&params, 7, 2, 6, 1)) {  // Tomaskove parametre pre bg dekoder: 11779, 2, 142, 134
+    int m = 4801;
+    int n0 = 2;
+    int w = 90;
+    int t = 100;
+    if (BPU_mecsInitParamsQcmdpc(&params, m, n0, w, t)) {  // Tomaskove parametre pre bg dekoder: 11779, 2, 142, 134
+    //if (BPU_mecsInitParamsQcmdpc(&params, 7, 2, 6, 1)) {
         return -1;
     }
     if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
@@ -484,18 +487,37 @@ int main(int argc, char **argv){
 
     //printf("%d %d\n", ctx->code_spec->qcmdpc->w, ctx->code_spec->qcmdpc->n0);
 
+    // generate error vector e
+    if (BPU_gf2VecWithDist(ctx->code_ctx->e, ctx->code_ctx->t,t)){
+        BPU_printError("can not init rand vector");
+        goto end;
+    }
+
     if (BPU_mecsEncrypt(ct, oldpt, ctx)) {
         BPU_printError("Failed to encrypt plaintext!\n");
         goto end;
     }
 
+    clock_t start, end;
+    double time_used;
+
+    // set decoder_id for selection of decoder
+    // decoder_id = 0   ---  Algorithm E, ver 2
+    // decoder_id = 1   ---  REMP-1, ver 2
+    // decoder_id = 2   ---  REMP-2  ver 2
+    ctx->code_ctx->decoder_id = 0;
+    start = clock();
     int ret = BPU_mecsQcmdpcDecrypt(newpt, ct, ctx->code_ctx);
+    end = clock();
+    time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
     //BPU_printGf2Vec(newpt);
     if (0 == ret) {
         fprintf(stderr, "Decryption success!\n");
     } else {
         fprintf(stderr, "Decryption FAILURE!!!\n");
     }
+    fprintf(stderr, "Time taken: %f \n", time_used);
 
     end:
     BPU_mecsFreeCtx(&ctx);
