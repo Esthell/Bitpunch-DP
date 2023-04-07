@@ -30,6 +30,8 @@
 #include <bitpunch/math/uni.h>
 #include <bitpunch/math/int.h>
 
+#include <mpi.h>
+
 
 //#include <bitpunch/code/qcmdpc/qcmdpc.h>
 
@@ -256,6 +258,9 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
     int distLen;
     uint16_t * distances;
     int pSize = 100;
+    int decrypt_bool;
+    clock_t start, end;
+    double time_used, total_time;
 
     d = (int **)calloc(length,sizeof(int *)); 
     
@@ -328,6 +333,7 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
             counter = 0;
             fer = 0;
             k = 0;
+            total_time = 0.0;
             while(k != numError){    //numError            
 
                 // generate error vector e    
@@ -351,20 +357,26 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
 
                     /***************************************/
     //            fprintf(stderr, "Decryption...\n");
+                start = clock();
                 // decrypt cipher text
-                if (BPU_mecsDecrypt(pt_out, ct, ctx)) {
+                decrypt_bool = BPU_mecsDecrypt(pt_out, ct, ctx);
+                end = clock();
+                time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+                total_time += time_used;
+                if (decrypt_bool) {
 //                    BPU_printError("Decryption error");
                     k++;
                 }
-                
                 BPU_gf2VecNull(ct);          
                 BPU_gf2VecNull(pt_out);
                 counter++;
             }
             
             fer = (double) numError / (double)counter;
-            printf("d = %d, numEror = %d, counter = %d, fer = %f \n", d[i][j], numError,counter,fer);
-            fprintf(fptr,"%d\t%d\t%d\t%d\t%d\t%f\n",j,i,d[i][j],numError,counter,fer); 
+            //printf("d = %d, numEror = %d, counter = %d, fer = %f, time = %d \n", d[i][j], numError,counter,fer, time_used);
+            //fprintf(fptr,"%d\t%d\t%d\t%d\t%d\t%f\n",j,i,d[i][j],numError,counter,fer);
+            fprintf(fptr, "%d\t%d\t%lf\t%lf\t%lf", i, counter, fer, total_time, total_time/(double)counter);
+            // TODO print fer, time a nejake cislo a asi rozdelit multiplicitou
         }              
     }
         
@@ -449,7 +461,7 @@ int old_main(int argc, char **argv) {
         }
 
     }
-      
+
     BPU_mecsFreeCtx(&ctx);
     BPU_mecsFreeParamsQcmdpc(&params);
 
@@ -458,6 +470,86 @@ int old_main(int argc, char **argv) {
 }
 
 int main(int argc, char **argv){
+    // MPI stuff
+    MPI_Init(NULL, NULL); // Initialize MPI
+    // get my process's rank
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    uint8_t decoder_id;
+    char filename[100] = {0};
+
+    if(world_rank < 4){
+        sprintf(filename, "Decoder-E-%d.txt", world_rank);
+        decoder_id = 0;
+    }
+    else if(world_rank < 8){
+        sprintf(filename, "Decoder-REMP1-%d.txt", world_rank);
+        decoder_id = 1;
+    }
+    else{
+        sprintf(filename, "Decoder-REMP2-%d.txt", world_rank);
+        decoder_id = 2;
+    }
+
+    /*FILE * file = fopen(filename, "w");
+    if(file == NULL){
+        return 1;
+    }*/
+
+    //getFERQcMdpc(BPU_T_Mecs_Ctx * ctx, int t, int numError, int numDist, char * filename)
+
+    //4801, 2, 90, 84           //5, 2, 6, 1          //24, 2, 6, 1     //
+    const uint16_t m = 4801;
+    const uint16_t n0 = 2;
+    const uint16_t w = 90;
+    const uint16_t t = 100;
+
+    int maxError = 10;
+    int numDist = 11;
+
+    // MUST BE NULL
+    BPU_T_Mecs_Ctx *ctx = NULL;
+    BPU_T_UN_Mecs_Params params;
+
+    srand(time(NULL));
+
+
+    // mce initialisation of 80-bit security
+
+    if (BPU_mecsInitParamsQcmdpc(&params,m,n0,w,t)) {
+        return 1;
+    }
+    if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
+        BPU_mecsFreeParamsQcmdpc(&params);
+        return 1;
+    }
+
+    // set decoder_id for selection of decoder
+    // decoder_id = 0   ---  Algorithm E, ver 2
+    // decoder_id = 1   ---  REMP-1, ver 2
+    // decoder_id = 2   ---  REMP-2  ver 2
+    ctx->code_ctx->decoder_id = decoder_id;
+
+    while(getFERQcMdpc(ctx,t,maxError,numDist,filename) == -1){
+        BPU_mecsFreeCtx(&ctx);
+        BPU_mecsFreeParamsQcmdpc(&params);
+        ctx = NULL;
+
+        if (BPU_mecsInitParamsQcmdpc(&params,m,n0,w,t)) {
+            return 1;
+        }
+        if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
+            BPU_mecsFreeParamsQcmdpc(&params);
+            return 1;
+        }
+        ctx->code_ctx->decoder_id = decoder_id;
+
+    }
+
+    BPU_mecsFreeCtx(&ctx);
+    BPU_mecsFreeParamsQcmdpc(&params);
+
+    /*
     BPU_T_Mecs_Ctx *ctx = NULL;
     BPU_T_UN_Mecs_Params params;
     BPU_T_GF2_Vector *ct, *oldpt, *newpt;
@@ -527,6 +619,8 @@ int main(int argc, char **argv){
         BPU_gf2VecFree(&oldpt);
         BPU_gf2VecFree(&newpt);
     }
-
+    //fclose(file);
+     */
+    MPI_Finalize();
     return 0;
 }
