@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+#PBS -N tuckova_gjs
+#PBS -q parallel
+#PBS -e SimpleMPI.stderr
+#PBS -o SimpleMPI.stdout
+#PBS -A tuckova_gjs
+#PBS -l nodes=1:ppn=12,pmem=1024mb,walltime=24:00:00
+#PBS -m ea
+
+application="/home/3xtuckova/bitpunch-main"
+
+# štandardný výstup z aplikácie sa bude priebežne zapisovať do súboru "OUT"
+options="> OUT"
+
+. /etc/profile.d/modules.sh
+module purge
+module load openmpi/1.6.5
+# Príklad využitia premenných (PBS/Torque)
+np=$PBS_NP
+ppn=$PBS_NUM_PPN
+numnodes=$PBS_NUM_NODES
+
+CMD="mpirun --report-bindings $application $options"
+
+###############################################################
+
+# prechod do priečinka odkiaľ bola spustená úloha
+cd $PBS_O_WORKDIR
+echo -e "Changed directory to `pwd`.n"
+JOBID=`echo $PBS_JOBID | sed -e "s/..*$//"`
+
+echo -e "JobID: $JOBIDn======"
+echo "Time: `date`"
+echo "Running on master node: `hostname`"
+echo "Current directory: `pwd`"
+
+if [ -r "$PBS_NODEFILE" ]; then
+        cat $PBS_NODEFILE | uniq > machfile
+        echo -e "nNodes allocated:n================"
+        echo `cat machfile | sed -e "s/..*$//g"`
+fi
+
+echo -e "nnumprocs=$np, numnodes=$numnodes, ppn=$ppn"
+
+echo -e "nExecuting command:n==================n$CMDn"
+
+eval $CMD

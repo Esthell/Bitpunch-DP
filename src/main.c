@@ -30,8 +30,6 @@
 #include <bitpunch/math/uni.h>
 #include <bitpunch/math/int.h>
 
-#include <mpi.h>
-
 
 //#include <bitpunch/code/qcmdpc/qcmdpc.h>
 
@@ -276,7 +274,6 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
     }  
        
         /***************************************/
-    fprintf(stderr, "Key generation...\n");
     // key pair generation
     if (BPU_mecsGenKeyPair(ctx)) {
         BPU_printError("Key generation error");
@@ -309,13 +306,10 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
         BPU_mecsFreeCtx(&ctx);         
         return -1;
     }
-    
-    fprintf(fptr,"pokus\tmul\td\terr\tcnt\tdfr\n"); 
 
      // alocate cipher text vector
     if (BPU_gf2VecMalloc(&ct, ctx->ct_len)) {
         BPU_printError("CT vector allocation error");
-
         BPU_gf2VecFree(&pt_in);
         return 1;
     }
@@ -329,7 +323,7 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
 
     for(i = 0; i < length; i++){ //length]
         for(j = 0; j < numDist; j++){
-            fprintf(stderr,"mul(h0) = %d\n",i);
+            fprintf(stderr, "Progress: %i/%i  %i/%i\n", i, length-1, j, numDist-1);
             counter = 0;
             fer = 0;
             k = 0;
@@ -344,7 +338,6 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
                
                 BPU_gf2VecRand(pt_out, 0);
                     /***************************************/
-    //            fprintf(stderr, "Encryption...\n");
                 // BPU_encrypt plain text
                 if (BPU_mecsEncrypt(ct, pt_in, ctx)) {
                     BPU_printError("Encryption error");
@@ -356,7 +349,6 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
                 }
 
                     /***************************************/
-    //            fprintf(stderr, "Decryption...\n");
                 start = clock();
                 // decrypt cipher text
                 decrypt_bool = BPU_mecsDecrypt(pt_out, ct, ctx);
@@ -373,17 +365,13 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
             }
             
             fer = (double) numError / (double)counter;
-            //printf("d = %d, numEror = %d, counter = %d, fer = %f, time = %d \n", d[i][j], numError,counter,fer, time_used);
-            //fprintf(fptr,"%d\t%d\t%d\t%d\t%d\t%f\n",j,i,d[i][j],numError,counter,fer);
-            fprintf(fptr, "%d\t%d\t%lf\t%lf\t%lf", i, counter, fer, total_time, total_time/(double)counter);
-            // TODO print fer, time a nejake cislo a asi rozdelit multiplicitou
+            fprintf(fptr, "%d\t%d\t%lf\t%lf\t%lf\n", i, counter, fer, total_time, total_time/(double)counter);
         }              
     }
         
     
     // clean up
         /***************************************/
-    fprintf(stderr, "\nCleaning up...\n");
     BPU_gf2VecFree(&pt_in);
     BPU_gf2VecFree(&pt_out);
     BPU_gf2VecFree(&ct);
@@ -470,23 +458,22 @@ int old_main(int argc, char **argv) {
 }
 
 int main(int argc, char **argv){
-    // MPI stuff
-    MPI_Init(NULL, NULL); // Initialize MPI
-    // get my process's rank
-    int world_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    int world_rank = atoi(argv[1]);
     uint8_t decoder_id;
     char filename[100] = {0};
 
     if(world_rank < 4){
+        fprintf(stderr, "Decoder E selected\n");
         sprintf(filename, "Decoder-E-%d.txt", world_rank);
         decoder_id = 0;
     }
     else if(world_rank < 8){
+        fprintf(stderr, "Decoder REMP-1 selected\n");
         sprintf(filename, "Decoder-REMP1-%d.txt", world_rank);
         decoder_id = 1;
     }
     else{
+        fprintf(stderr, "Decoder REMP-2 selected\n");
         sprintf(filename, "Decoder-REMP2-%d.txt", world_rank);
         decoder_id = 2;
     }
@@ -502,7 +489,7 @@ int main(int argc, char **argv){
     const uint16_t m = 4801;
     const uint16_t n0 = 2;
     const uint16_t w = 90;
-    const uint16_t t = 100;
+    const uint16_t t = 106;
 
     int maxError = 10;
     int numDist = 11;
@@ -511,7 +498,9 @@ int main(int argc, char **argv){
     BPU_T_Mecs_Ctx *ctx = NULL;
     BPU_T_UN_Mecs_Params params;
 
-    srand(time(NULL));
+    time_t tt;
+    srand((unsigned )time(&tt));
+    //srand(time(NULL));
 
 
     // mce initialisation of 80-bit security
@@ -621,6 +610,84 @@ int main(int argc, char **argv){
     }
     //fclose(file);
      */
-    MPI_Finalize();
+    return 0;
+}
+
+int maine(int argc, char **argv){
+    BPU_T_Mecs_Ctx *ctx = NULL;
+    BPU_T_UN_Mecs_Params params;
+    BPU_T_GF2_Vector *ct, *oldpt, *newpt;
+    char allocatedVectors = 0;
+
+    time_t tt;
+    srand((unsigned )time(&tt));
+    //srand(time(NULL));
+
+    int m = 4801;
+    int n0 = 2;
+    int w = 90;
+    int t = 100;
+
+    if (BPU_mecsInitParamsQcmdpc(&params, m, n0, w, t)) {  // Tomaskove parametre pre bg dekoder: 11779, 2, 142, 134
+        //if (BPU_mecsInitParamsQcmdpc(&params, 7, 2, 6, 1)) {
+        return -1;
+    }
+    if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
+        BPU_mecsFreeParamsQcmdpc(&params);
+        return -1;
+    }
+    if (BPU_mecsGenKeyPair(ctx)) {
+        goto end;
+    }
+    ctx->code_ctx->decoder_id = 1;
+    BPU_gf2VecMalloc(&ct, ctx->ct_len);   // these allocations may fail...
+    BPU_gf2VecMalloc(&oldpt, ctx->pt_len);
+    BPU_gf2VecMalloc(&newpt, ctx->pt_len);
+    allocatedVectors = 1;
+    BPU_gf2VecRand(oldpt, 0);
+
+    //printf("%d %d\n", ctx->code_spec->qcmdpc->w, ctx->code_spec->qcmdpc->n0);
+
+    // generate error vector e
+    if (BPU_gf2VecWithDist(ctx->code_ctx->e, ctx->code_ctx->t,t)){
+        BPU_printError("can not init rand vector");
+        goto end;
+    }
+
+    if (BPU_mecsEncrypt(ct, oldpt, ctx)) {
+        BPU_printError("Failed to encrypt plaintext!\n");
+        goto end;
+    }
+
+    clock_t start, end;
+    double time_used;
+
+    // set decoder_id for selection of decoder
+    // decoder_id = 0   ---  Algorithm E, ver 2
+    // decoder_id = 1   ---  REMP-1, ver 2
+    // decoder_id = 2   ---  REMP-2  ver 2
+    ctx->code_ctx->decoder_id = 1;
+    start = clock();
+    int ret = BPU_mecsQcmdpcDecrypt(newpt, ct, ctx->code_ctx);
+    end = clock();
+    time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+    //BPU_printGf2Vec(newpt);
+    if (0 == ret) {
+        fprintf(stderr, "Decryption success!\n");
+    } else {
+        fprintf(stderr, "Decryption FAILURE!!!\n");
+    }
+    fprintf(stderr, "Time taken: %f \n", time_used);
+
+    end:
+    BPU_mecsFreeCtx(&ctx);
+    BPU_mecsFreeParamsQcmdpc(&params);
+    if (allocatedVectors) {
+        BPU_gf2VecFree(&ct);
+        BPU_gf2VecFree(&oldpt);
+        BPU_gf2VecFree(&newpt);
+    }
+
     return 0;
 }

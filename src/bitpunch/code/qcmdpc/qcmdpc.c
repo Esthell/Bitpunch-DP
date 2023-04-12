@@ -1324,7 +1324,7 @@ void BPU_mecsFreeMatrixUint32t(uint32_t ** mat, size_t rows) {
 }
 
 inline double BPU_mecsGetRandom() {
-    return (rand() % 101) / 100.0;
+    return ((double)rand()/(double)RAND_MAX);
 }
 
 inline int8_t BPU_mecsSignum(int val) {
@@ -1592,7 +1592,7 @@ int BPU_mecsQcmdpcDecodeE_2(BPU_T_GF2_Vector * plainTextVector,
             for (uint32_t col = 0; col < w/2; ++col) {
                 sum = sum + C_to_V[row][H[row][col]];
             }
-
+            sum += (omega * BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row));
             int8_t vec_bit = BPU_mecsSignum(sum);
             vec_bit = BPU_mecsQcmdpcConvertToCiphertextBit(vec_bit);
             if(vec_bit == -1){
@@ -1600,7 +1600,6 @@ int BPU_mecsQcmdpcDecodeE_2(BPU_T_GF2_Vector * plainTextVector,
             }
             BPU_gf2VecSetBit(plainTextVector, row, vec_bit);
 
-            sum += (omega * BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row));
             for (uint32_t col = 0; col < w/2; ++col) {
                 int tmp = sum - C_to_V[row][H[row][col]];
                 V_to_C[row][H[row][col]] = BPU_mecsSignum(tmp);
@@ -1656,8 +1655,9 @@ int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
                           const struct _BPU_T_Code_Ctx *ctx){
     int retval = 1;
     int omega = 13;
-    double p = 0.002;
-    double p_dec = 0.0001;
+    // p = 0.002, p_dec = 0.0001
+    double p = 0.00012;
+    double p_dec = 0.0;
     BPU_T_GF2_Poly syndrom;
     uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
@@ -1774,13 +1774,13 @@ int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
                 }
                 V_to_C[row][H[row][col]] = (int8_t)tmp;
 
-                if (p < p_dec) {
-                    p = 0;
-                }
-                else {
-                    p = p - p_dec;
-                }
             }
+        }
+        if (p < p_dec) {
+            p = 0;
+        }
+        else {
+            p = p - p_dec;
         }
     }
     free(products_left);
@@ -1825,10 +1825,14 @@ int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
 int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
                               const BPU_T_GF2_Vector * cipher_text,
                               const struct _BPU_T_Code_Ctx *ctx){
+    //fprintf(stderr, "start decoding\n");
     int retval = 1;
     int omega = 13;
-    double p = 0.002;
-    double p_dec = 0.0001;
+    // p = 0.002, p_dec = 0.0001
+    double p = 0.0012;
+    double p_dec = 0.0;
+    //double p = 0.002;
+    //double p_dec = 0.0001;
     BPU_T_GF2_Poly syndrom;
     uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
@@ -1931,13 +1935,15 @@ int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
             for (uint32_t col = 0; col < w/2; ++col) {
                 sum = sum + C_to_V[row][H[row][col]];
             }
+            sum += (omega * BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row));
             int8_t vec_bit = BPU_mecsSignum(sum);
+
             vec_bit = BPU_mecsQcmdpcConvertToCiphertextBit(vec_bit);
             if(vec_bit == -1){
                 vec_bit = BPU_gf2VecGetBit(cipher_text, row);
             }
             BPU_gf2VecSetBit(plainTextVector, row, vec_bit);
-            sum += (omega * BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row));
+
             for (uint32_t col = 0; col < w/2; ++col) {
                 int tmp = sum - C_to_V[row][H[row][col]];
                 tmp = (int)BPU_mecsSignum(tmp);
@@ -1949,19 +1955,19 @@ int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
                     }
                 }
                 V_to_C[row][H[row][col]] = (int8_t)tmp;
-
-                if (p < p_dec) {
-                    p = 0;
-                }
-                else {
-                    p = p - p_dec;
-                }
             }
         }
         BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
         if(BPU_gf2PolyIsZero(&syndrom)){
             retval = 0;
             break;
+        }
+
+        if (p < p_dec) {
+            p = 0;
+        }
+        else {
+            p = p - p_dec;
         }
     }
     free(products_left);
@@ -2008,8 +2014,9 @@ int BPU_mecsQcmdpcDecodeREMP2(BPU_T_GF2_Vector * plainTextVector,
                               const struct _BPU_T_Code_Ctx *ctx){
     int retval = 1;
     int omega = 13;
-    double p = 0.002;
-    double p_dec = 0.0001;
+    // p = 0.002, p_dec = 0.0001
+    double p = 0.35;
+    double p_dec = 0.0;
     BPU_T_GF2_Poly syndrom;
     uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
@@ -2127,15 +2134,13 @@ int BPU_mecsQcmdpcDecodeREMP2(BPU_T_GF2_Vector * plainTextVector,
                 }
                 V_to_C[row][H[row][col]] = (int8_t)tmp;
 
-                if (p != 0){
-                    if(p < p_dec){
-                        p = 0;
-                    }
-                    else{
-                        p = p - p_dec;
-                    }
-                }
             }
+        }
+        if (p < p_dec) {
+            p = 0;
+        }
+        else {
+            p = p - p_dec;
         }
     }
     free(products_left);
@@ -2182,8 +2187,9 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
                               const struct _BPU_T_Code_Ctx *ctx){
     int retval = 1;
     int omega = 13;
-    double p = 0.002;
-    double p_dec = 0.0001;
+    // p = 0.002, p_dec = 0.0001
+    double p = 0.35;
+    double p_dec = 0.0;
     BPU_T_GF2_Poly syndrom;
     uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
@@ -2286,6 +2292,8 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
             for (uint32_t col = 0; col < w/2; ++col) {
                 sum = sum + C_to_V[row][H[row][col]];
             }
+            int8_t bit = BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row);
+            sum += (omega * bit);
             int8_t vec_bit = BPU_mecsSignum(sum);
             vec_bit = BPU_mecsQcmdpcConvertToCiphertextBit(vec_bit);
             if(vec_bit == -1){
@@ -2293,8 +2301,7 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
             }
             BPU_gf2VecSetBit(plainTextVector, row, vec_bit);
 
-            int8_t bit = BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row);
-            sum += (omega * bit);
+
             for (uint32_t col = 0; col < w/2; ++col) {
                 int tmp = sum - C_to_V[row][H[row][col]];
                 tmp = (tmp > 0) - (tmp < 0);
@@ -2306,21 +2313,19 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
                     }
                 }
                 V_to_C[row][H[row][col]] = (int8_t)tmp;
-
-                if (p != 0){
-                    if(p < p_dec){
-                        p = 0;
-                    }
-                    else{
-                        p = p - p_dec;
-                    }
-                }
             }
         }
         BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
         if(BPU_gf2PolyIsZero(&syndrom)){
             retval = 0;
             break;
+        }
+
+        if (p < p_dec) {
+            p = 0;
+        }
+        else {
+            p = p - p_dec;
         }
     }
     free(products_left);

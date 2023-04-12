@@ -67,9 +67,9 @@ void addErrorBit(BPU_T_GF2_Vector *out, BPU_T_GF2_Vector *error, int number_of_e
 	}
 }
 
-unsigned long long int rdtsc(void)
+/*unsigned long long int rdtsc(void)
 {
 	unsigned long lo, hi;
 	asm( "rdtsc" : "=a" (lo), "=d" (hi) );
 	return( lo | (hi << 32) );
-}
+}*/

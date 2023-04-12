@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.18)
 
 project(bitpunch C)
 
@@ -70,6 +70,8 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()
 
-add_link_options(-lm)
+# add_link_options(-lm)
 
 add_executable(bitpunch-main ${SOURCES})
+
+target_link_libraries(bitpunch-main m)
