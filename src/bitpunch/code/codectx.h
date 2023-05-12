@@ -61,6 +61,9 @@ typedef struct _BPU_T_Code_Ctx {
     uint16_t msg_len;           ///< Code dimenzion
     uint8_t t;                  ///< Error code correction capability
     uint8_t decoder_id;         ///< Decoder selection switch
+
+    // uint32_t syndrome_weight;         ///< Save spot for measured weight of syndrome
+
 } BPU_T_Code_Ctx;
 
 /**

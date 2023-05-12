@@ -1525,3 +1525,14 @@ int BPU_gf2PolyIsZero(const BPU_T_GF2_Poly * a) {
     // all elements are zero, so also poly is zero
     return 1;
 }
+
+uint32_t BPU_gf2PolyWeight(const BPU_T_GF2_Poly *a) {
+    // Code taken from Bachelor's thesis of Tomáš Vavro
+    int i, max_pos = BPU_gf2PolyGetHighestBitPos(a);
+    uint32_t out = 0;
+
+    for (i = 0; i < max_pos; ++i) {
+        out += BPU_gf2PolyGetBit(a, i);
+    }
+    return out;
+}

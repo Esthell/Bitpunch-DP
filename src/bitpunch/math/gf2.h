@@ -646,6 +646,12 @@ void BPU_gf2PolyShiftRightOne(BPU_T_GF2_Poly * a);
  */
 void BPU_gf2PolyTransp(BPU_T_GF2_Poly * out, const BPU_T_GF2_Poly * in);
 
+/**
+ * Get Hamming weight of a polynomial.
+ * @param a polynomial
+ * @return Hamming weight of polynomial a
+ */
+uint32_t BPU_gf2PolyWeight(const BPU_T_GF2_Poly *a);
 
 /************************************************
 POLYNOMIAL MATH

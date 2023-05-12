@@ -1490,6 +1490,7 @@ int BPU_mecsQcmdpcDecodeE_2(BPU_T_GF2_Vector * plainTextVector,
                           const struct _BPU_T_Code_Ctx *ctx){
     int retval = 1;
     int omega = 13;
+    // struct _BPU_T_Code_Ctx *myctx = ctx;
     BPU_T_GF2_Poly syndrom;
     uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
@@ -1606,6 +1607,7 @@ int BPU_mecsQcmdpcDecodeE_2(BPU_T_GF2_Vector * plainTextVector,
             }
         }
         BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
+        // myctx->syndrome_weight = BPU_gf2PolyWeight(&syndrom);
         if(BPU_gf2PolyIsZero(&syndrom)){
             retval = 0;
             break;
@@ -1613,26 +1615,6 @@ int BPU_mecsQcmdpcDecodeE_2(BPU_T_GF2_Vector * plainTextVector,
     }
     free(products_left);
     free(products_right);
-
-    /*for (uint32_t row = 0; row < k; ++row) { // teh final solution
-        int sum = 0;
-        for (uint32_t col = 0; col < w/2; ++col) {
-            sum = sum + C_to_V[row][H[row][col]];
-        }
-
-        int8_t tmp = BPU_mecsSignum(sum);
-        tmp = BPU_mecsQcmdpcConvertToCiphertextBit(tmp);
-        if(tmp == -1){
-            tmp = BPU_gf2VecGetBit(cipher_text, row);
-        }
-        BPU_gf2VecSetBit(plainTextVector, row, tmp);
-
-    }
-
-    BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
-    if(BPU_gf2PolyIsZero(&syndrom)){
-        retval = 0;
-    }*/
 
     // free
     BPU_gf2PolyFree(&syndrom , 0);
@@ -1773,7 +1755,6 @@ int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
                     }
                 }
                 V_to_C[row][H[row][col]] = (int8_t)tmp;
-
             }
         }
         if (p < p_dec) {
@@ -1825,15 +1806,14 @@ int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
 int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
                               const BPU_T_GF2_Vector * cipher_text,
                               const struct _BPU_T_Code_Ctx *ctx){
-    //fprintf(stderr, "start decoding\n");
     int retval = 1;
     int omega = 13;
-    // p = 0.002, p_dec = 0.0001
     double p = 0.0012;
     double p_dec = 0.0;
     //double p = 0.002;
     //double p_dec = 0.0001;
     BPU_T_GF2_Poly syndrom;
+    //struct _BPU_T_Code_Ctx *myctx = ctx;
     uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
     uint32_t n = ctx->code_spec->qcmdpc->H.n; // 4801
@@ -1873,7 +1853,6 @@ int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
     for (uint32_t i = 0; i < k; ++i) {
         BPU_T_GF2_Sparse_Poly row;
         BPU_gf2SparseQcMatrixGetRow(&row, &ctx->code_spec->qcmdpc->H, (int)i);
-        //BPU_printGf2SparsePoly(&row);
         for (uint32_t j = 0; j < row.weight; ++j) {
             uint32_t idx = row.index[j];
             H[i][j] = idx;
@@ -1958,6 +1937,7 @@ int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
             }
         }
         BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
+        //myctx->syndrome_weight = BPU_gf2PolyWeight(&syndrom);
         if(BPU_gf2PolyIsZero(&syndrom)){
             retval = 0;
             break;
@@ -1972,26 +1952,6 @@ int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
     }
     free(products_left);
     free(products_right);
-
-    /*for (uint32_t row = 0; row < k; ++row) { // teh final solution
-        int sum = 0;
-        for (uint32_t col = 0; col < w/2; ++col) {
-            sum = sum + C_to_V[row][H[row][col]];
-        }
-
-        int8_t tmp = BPU_mecsSignum(sum);
-        tmp = BPU_mecsQcmdpcConvertToCiphertextBit(tmp);
-        if(tmp == -1){
-            tmp = BPU_gf2VecGetBit(cipher_text, row);
-        }
-        BPU_gf2VecSetBit(plainTextVector, row, tmp);
-
-    }
-
-    BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
-    if(BPU_gf2PolyIsZero(&syndrom)){
-        retval = 0;
-    }*/
 
     // free
     BPU_gf2PolyFree(&syndrom , 0);
@@ -2187,9 +2147,10 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
                               const struct _BPU_T_Code_Ctx *ctx){
     int retval = 1;
     int omega = 13;
-    // p = 0.002, p_dec = 0.0001
-    double p = 0.35;
+    // p = 0.35, p_dec = 0.000
+    double p = 0.45;
     double p_dec = 0.0;
+    //struct _BPU_T_Code_Ctx *myctx = ctx;
     BPU_T_GF2_Poly syndrom;
     uint16_t w = ctx->code_spec->qcmdpc->w;
     uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
@@ -2316,6 +2277,7 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
             }
         }
         BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
+        //myctx->syndrome_weight = BPU_gf2PolyWeight(&syndrom);
         if(BPU_gf2PolyIsZero(&syndrom)){
             retval = 0;
             break;
@@ -2330,26 +2292,6 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
     }
     free(products_left);
     free(products_right);
-
-    /*for (uint32_t row = 0; row < k; ++row) { // teh final solution
-        int sum = 0;
-        for (uint32_t col = 0; col < w/2; ++col) {
-            sum = sum + C_to_V[row][H[row][col]];
-        }
-
-        int8_t tmp = BPU_mecsSignum(sum);
-        tmp = BPU_mecsQcmdpcConvertToCiphertextBit(tmp);
-        if(tmp == -1){
-            tmp = BPU_gf2VecGetBit(cipher_text, row);
-        }
-        BPU_gf2VecSetBit(plainTextVector, row, tmp);
-
-    }
-
-    BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
-    if(BPU_gf2PolyIsZero(&syndrom)){
-        retval = 0;
-    }*/
 
     // free
     BPU_gf2PolyFree(&syndrom , 0);
@@ -2366,267 +2308,6 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
     end1:
     return retval;
 }
-
-int BPU_mecsQcmdpcDecodeREMP1OLD(BPU_T_GF2_Vector * plainTextVector,
-                          const BPU_T_GF2_Vector * cipher_text,
-                          const struct _BPU_T_Code_Ctx *ctx){
-    int retval = 1;
-    int omega = 13;
-    double p = 0.002;
-    double p_dec = 0.0001;
-    BPU_T_GF2_Poly syndrom;
-    uint16_t w = ctx->code_spec->qcmdpc->w;             // pozor ci sedi w
-    uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
-    uint32_t n = ctx->code_spec->qcmdpc->H.n; // 4801
-    int8_t ** V_to_C = BPU_mecsAllocMatrixInt8t(k, n);
-    if (NULL == V_to_C) {
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-    int8_t ** C_to_V = BPU_mecsAllocMatrixInt8t(k, n);
-    if (NULL == C_to_V) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-    uint32_t ** H_transp = BPU_mecsAllocMatrixUint32t(n, w);
-    if (NULL == H_transp) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_mecsFreeMatrixInt8t(C_to_V, k);
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-    uint32_t ** H = BPU_mecsAllocMatrixUint32t(k, w/2);
-    if (NULL == H) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_mecsFreeMatrixInt8t(C_to_V, k);
-        BPU_mecsFreeMatrixUint32t(H_transp, n);
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-
-    // create H_transp and H
-    uint32_t * last_indices_H_transp = (uint32_t *) calloc(n, sizeof(uint32_t)); // TODO check
-    for (uint32_t i = 0; i < k; ++i) {
-        BPU_T_GF2_Sparse_Poly row;
-        BPU_gf2SparseQcMatrixGetRow(&row, &ctx->code_spec->qcmdpc->H, (int)i);
-        for (uint32_t j = 0; j < row.weight; ++j) {
-            uint32_t idx = row.index[j];
-            H[i][j] = idx;
-            H_transp[idx][last_indices_H_transp[idx]] = i;
-            last_indices_H_transp[idx] += 1;
-        }
-        BPU_gf2SparsePolyFree(&row, 0);
-    }
-    free(last_indices_H_transp);
-
-    for (uint16_t i=0; i < cipher_text->len; i++){
-        int8_t converted_bit = BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, i);
-        for(uint32_t row = 0; row < n; row++) {
-            V_to_C[i][row] = converted_bit;
-        }
-    }
-
-    for (int iter = 0; iter < BPU_QCMDPC_PARAM_MAX_ITER_C; ++iter) {
-        fprintf(stderr, "Iteration: %u\n", iter);
-        for (uint32_t col = 0; col < n; ++col) { // C -> V
-            // Here, colum while indexing in H_transp is actually row, because H_transp is of type 4801x9602
-            for (uint32_t row = 0; row < w; ++row) {
-                int pi = 1;
-                for (uint32_t it = 0; it < w; ++it) {
-                    if (it == row) continue;
-                    pi = pi * V_to_C[H_transp[col][it]][col];
-                }
-                C_to_V[H_transp[col][row]][col] = (int8_t)pi;
-            }
-        }
-        for (uint32_t row = 0; row < k; ++row) { // V -> C
-            int sum = 0;
-            for (uint32_t col = 0; col < w/2; ++col) {
-                sum = sum + C_to_V[row][H[row][col]];
-
-            }
-            sum += (omega * BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row));
-            for (uint32_t col = 0; col < w/2; ++col) {
-                int tmp = sum - C_to_V[row][H[row][col]];
-                tmp = (tmp > 0) - (tmp < 0);
-
-                if(tmp != 0){
-                    double random = ((double)(rand()%100)/100);
-                    if(random < p){
-                        tmp = 0;
-                    }
-                }
-                V_to_C[row][H[row][col]] = (int8_t)tmp;
-
-                if(p < p_dec){
-                    p = 0;
-                }
-                else{
-                    p = p - p_dec;
-                }
-            }
-        }
-    }
-
-    for (uint32_t row = 0; row < k; ++row) { // teh final solution
-        int sum = 0;
-        for (uint32_t col = 0; col < w/2; ++col) {
-            sum = sum + C_to_V[row][H[row][col]];
-        }
-        int8_t tmp = (int8_t)((sum > 0) - (sum < 0));
-        tmp = BPU_mecsQcmdpcConvertToCiphertextBit(tmp);
-        if(tmp == -1){
-            tmp = BPU_gf2VecGetBit(cipher_text, row);
-        }
-        BPU_gf2VecSetBit(plainTextVector, row, tmp);
-    }
-    BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
-    if(BPU_gf2PolyIsZero(&syndrom)){
-        retval = 0;
-    }
-    fprintf(stderr, "\n");
-    // free
-    BPU_gf2PolyFree(&syndrom , 0);
-    BPU_mecsFreeMatrixInt8t(V_to_C, k);
-    BPU_mecsFreeMatrixInt8t(C_to_V, k);
-    BPU_mecsFreeMatrixUint32t(H_transp, n);
-    BPU_mecsFreeMatrixUint32t(H, k);
-    return retval;
-}
-
-
-int BPU_mecsQcmdpcDecodeREMP2OLD(BPU_T_GF2_Vector * plainTextVector,
-                              const BPU_T_GF2_Vector * cipher_text,
-                              const struct _BPU_T_Code_Ctx *ctx){
-    int retval = 1;
-    int omega = 13;
-    double p = 0.1;
-    double p_dec = 0.0;
-    BPU_T_GF2_Poly syndrom;
-    uint16_t w = ctx->code_spec->qcmdpc->w;             // pozor ci sedi w
-    uint32_t k = ctx->code_spec->qcmdpc->H.k; // 9602
-    uint32_t n = ctx->code_spec->qcmdpc->H.n; // 4801
-    int8_t ** V_to_C = BPU_mecsAllocMatrixInt8t(k, n);
-    if (NULL == V_to_C) {
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-    int8_t ** C_to_V = BPU_mecsAllocMatrixInt8t(k, n);
-    if (NULL == C_to_V) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-    uint32_t ** H_transp = BPU_mecsAllocMatrixUint32t(n, w);
-    if (NULL == H_transp) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_mecsFreeMatrixInt8t(C_to_V, k);
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-    uint32_t ** H = BPU_mecsAllocMatrixUint32t(k, w/2);
-    if (NULL == H) {
-        BPU_mecsFreeMatrixInt8t(V_to_C, k);
-        BPU_mecsFreeMatrixInt8t(C_to_V, k);
-        BPU_mecsFreeMatrixUint32t(H_transp, n);
-        BPU_printError("CHYBA ALOKACIE");
-        return 1;
-    }
-
-    // create H_transp and H
-    uint32_t * last_indices_H_transp = (uint32_t *) calloc(n, sizeof(uint32_t)); // TODO check
-    for (uint32_t i = 0; i < k; ++i) {
-        BPU_T_GF2_Sparse_Poly row;
-        BPU_gf2SparseQcMatrixGetRow(&row, &ctx->code_spec->qcmdpc->H, (int)i);
-        for (uint32_t j = 0; j < row.weight; ++j) {
-            uint32_t idx = row.index[j];
-            H[i][j] = idx;
-            H_transp[idx][last_indices_H_transp[idx]] = i;
-            last_indices_H_transp[idx] += 1;
-        }
-        BPU_gf2SparsePolyFree(&row, 0);
-    }
-    free(last_indices_H_transp);
-
-    for (uint16_t i=0; i < cipher_text->len; i++){
-        int8_t converted_bit = BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, i);
-        for(uint32_t row = 0; row < n; row++) {
-            V_to_C[i][row] = converted_bit;
-        }
-    }
-
-    for (int iter = 0; iter < BPU_QCMDPC_PARAM_MAX_ITER_C; ++iter) {
-        fprintf(stderr, "Iteration: %u\n", iter);
-        for (uint32_t col = 0; col < n; ++col) { // C -> V
-            // Here, colum while indexing in H_transp is actually row, because H_transp is of type 4801x9602
-            for (uint32_t row = 0; row < w; ++row) {
-                int pi = 1;
-                for (uint32_t it = 0; it < w; ++it) {
-                    if (it == row) continue;
-                    pi = pi * V_to_C[H_transp[col][it]][col];
-                }
-                C_to_V[H_transp[col][row]][col] = (int8_t)pi;
-            }
-        }
-        for (uint32_t row = 0; row < k; ++row) { // V -> C
-            int sum = 0;
-            for (uint32_t col = 0; col < w/2; ++col) {
-                sum = sum + C_to_V[row][H[row][col]];
-
-            }
-            int8_t bit = BPU_mecsQcmdpcConvertFromCiphertextBit(cipher_text, row);
-            sum += (omega * bit);
-            for (uint32_t col = 0; col < w/2; ++col) {
-                int tmp = sum - C_to_V[row][H[row][col]];
-                tmp = (tmp > 0) - (tmp < 0);
-
-                if(tmp == (bit*(-1))){
-                    double random = ((double)(rand()%100)/100);
-                    if(random < p){
-                        tmp = 0;
-                    }
-                }
-                V_to_C[row][H[row][col]] = (int8_t)tmp;
-
-                if (p != 0){
-                    if(p < p_dec){
-                        p = 0;
-                    }
-                    else{
-                        p = p - p_dec;
-                    }
-                }
-            }
-        }
-    }
-
-    for (uint32_t row = 0; row < k; ++row) { // teh final solution
-        int sum = 0;
-        for (uint32_t col = 0; col < w/2; ++col) {
-            sum = sum + C_to_V[row][H[row][col]];
-        }
-        int8_t tmp = (int8_t)((sum > 0) - (sum < 0));
-        tmp = BPU_mecsQcmdpcConvertToCiphertextBit(tmp);
-        if(tmp == -1){
-            tmp = BPU_gf2VecGetBit(cipher_text, row);
-        }
-        BPU_gf2VecSetBit(plainTextVector, row, tmp);
-    }
-    BPU_mecsQcmdpcCalcSyndrom(&syndrom,plainTextVector,ctx);
-    if(BPU_gf2PolyIsZero(&syndrom)){
-        retval = 0;
-    }
-    fprintf(stderr, "\n");
-    // free
-    BPU_gf2PolyFree(&syndrom , 0);
-    BPU_mecsFreeMatrixInt8t(V_to_C, k);
-    BPU_mecsFreeMatrixInt8t(C_to_V, k);
-    BPU_mecsFreeMatrixUint32t(H_transp, n);
-    BPU_mecsFreeMatrixUint32t(H, k);
-    return retval;
-}
-
 
 void BPU_mecsQcmdpcCalcSyndrom(BPU_T_GF2_Vector * syndrom,
                                const BPU_T_GF2_Vector * cipher_text,

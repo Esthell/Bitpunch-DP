@@ -240,7 +240,7 @@ int testKeyGenEncDec(BPU_T_Mecs_Ctx * ctx) {
 
 
 // GJS Attack - count FER - Frame Error Rate
-int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * filename) {
+int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx, int t, int numError, int numDist, char * filename) {
     
     BPU_T_GF2_Vector *ct, *pt_in, *pt_out;
     BPU_T_GF2_Sparse_Poly row;
@@ -259,6 +259,7 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
     int decrypt_bool;
     clock_t start, end;
     double time_used, total_time;
+    //uint32_t syndrome_weights;
 
     d = (int **)calloc(length,sizeof(int *)); 
     
@@ -271,9 +272,18 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
     { 
         printf("Could not open file"); 
         return 0; 
-    }  
-       
-        /***************************************/
+    }
+
+    /*FILE *file = fopen("REMP-2-p-0.45.txt", "w");
+    if (file == NULL)
+    {
+        printf("Could not open file");
+        fclose(fptr);
+        return 0;
+    }*/
+
+
+    /***************************************/
     // key pair generation
     if (BPU_mecsGenKeyPair(ctx)) {
         BPU_printError("Key generation error");
@@ -328,6 +338,7 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
             fer = 0;
             k = 0;
             total_time = 0.0;
+            // syndrome_weights = 0;
             while(k != numError){    //numError            
 
                 // generate error vector e    
@@ -355,6 +366,7 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
                 end = clock();
                 time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
                 total_time += time_used;
+                // syndrome_weights += ctx->code_ctx->syndrome_weight;
                 if (decrypt_bool) {
 //                    BPU_printError("Decryption error");
                     k++;
@@ -366,6 +378,7 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
             
             fer = (double) numError / (double)counter;
             fprintf(fptr, "%d\t%d\t%lf\t%lf\t%lf\n", i, counter, fer, total_time, total_time/(double)counter);
+            // fprintf(file, "%d\t%d\t%lf\n",i, syndrome_weights, (double)syndrome_weights/100);
         }              
     }
         
@@ -384,112 +397,38 @@ int getFERQcMdpc(BPU_T_Mecs_Ctx * ctx,int t, int numError, int numDist, char * f
     free(distances);
     
     fclose(fptr);
+    // fclose(file);
     
     
     return rc;
 }
 
 
-int old_main(int argc, char **argv) {
-    int rc = 0;
-    int pokus = 0;
-    int i,j;
-    
-    //4801, 2, 90, 84           //5, 2, 6, 1          //24, 2, 6, 1     //
+int main(int argc, char **argv){
+    int decoder_id = (int)atoi(argv[1]);
+    char filename[100] = {0};
+
+    //4801, 2, 90, 84
     const uint16_t m = 4801;
     const uint16_t n0 = 2;
     const uint16_t w = 90;
-    const uint16_t t = 100;
-    
-    int maxError = 5;
-    int numDist = 2;
-    
-    char filename[sizeof "output_gjs_mf1-2_1000_100.txt"];
-    sprintf(filename, "output_gjs_mf1-2_%d_%d.txt", t,maxError); 
-    
-  
-    
-    /*
-     * Pocitaj tresholdy
-    int numberOftreshB = 50;
-    int * tresholds = (int *)calloc(numberOftreshB,sizeof(int)); 
-    BPU_mecsQcmdpcGetTresholds(tresholds,m,w,t,numberOftreshB);    
-    for(i = 0 ; i < numberOftreshB; i++){
-        printf("b%d = %d\n",i+1,tresholds[i]);
-    }
-    */
-    
-    // MUST BE NULL
-    BPU_T_Mecs_Ctx *ctx = NULL;
-    BPU_T_UN_Mecs_Params params;
+    uint16_t t = 100;
 
-    srand(time(NULL));
-
-   
-    // mce initialisation of 80-bit security
-    fprintf(stderr, "Basic QC-MDPC Initialisation...\n");
-    printf("Generovanie ctx c. %d\n",++pokus);
-    if (BPU_mecsInitParamsQcmdpc(&params,m,n0,w,t)) {
-        return 1;
-    }
-    if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
-        return 1;
-    }
-        
-    while(getFERQcMdpc(ctx,t,maxError,numDist,filename) == -1){
-        printf("Generovanie ctx c. %d\n",++pokus);
-        BPU_T_Mecs_Ctx *ctx = NULL; 
-        BPU_T_UN_Mecs_Params params;
-        
-        if (BPU_mecsInitParamsQcmdpc(&params,m,n0,w,t)) {
-            return 1;
-        }
-        if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
-            return 1;
-        }
-
-    }
-
-    BPU_mecsFreeCtx(&ctx);
-    BPU_mecsFreeParamsQcmdpc(&params);
-
-    return rc;
-    
-}
-
-int main(int argc, char **argv){
-    int world_rank = atoi(argv[1]);
-    uint8_t decoder_id;
-    char filename[100] = {0};
-
-    if(world_rank < 4){
+    if(0 == decoder_id){
         fprintf(stderr, "Decoder E selected\n");
-        sprintf(filename, "Decoder-E-%d.txt", world_rank);
-        decoder_id = 0;
+        sprintf(filename, "Decoder-E.txt");
     }
-    else if(world_rank < 8){
+    else if(1 == decoder_id){
         fprintf(stderr, "Decoder REMP-1 selected\n");
-        sprintf(filename, "Decoder-REMP1-%d.txt", world_rank);
-        decoder_id = 1;
+        sprintf(filename, "Decoder-REMP1.txt");
     }
     else{
         fprintf(stderr, "Decoder REMP-2 selected\n");
-        sprintf(filename, "Decoder-REMP2-%d.txt", world_rank);
+        sprintf(filename, "Decoder-REMP2.txt");
+        t = 106;
         decoder_id = 2;
     }
 
-    /*FILE * file = fopen(filename, "w");
-    if(file == NULL){
-        return 1;
-    }*/
-
-    //getFERQcMdpc(BPU_T_Mecs_Ctx * ctx, int t, int numError, int numDist, char * filename)
-
-    //4801, 2, 90, 84           //5, 2, 6, 1          //24, 2, 6, 1     //
-    const uint16_t m = 4801;
-    const uint16_t n0 = 2;
-    const uint16_t w = 90;
-    const uint16_t t = 106;
 
     int maxError = 10;
     int numDist = 11;
@@ -502,9 +441,7 @@ int main(int argc, char **argv){
     srand((unsigned )time(&tt));
     //srand(time(NULL));
 
-
     // mce initialisation of 80-bit security
-
     if (BPU_mecsInitParamsQcmdpc(&params,m,n0,w,t)) {
         return 1;
     }
@@ -537,157 +474,6 @@ int main(int argc, char **argv){
 
     BPU_mecsFreeCtx(&ctx);
     BPU_mecsFreeParamsQcmdpc(&params);
-
-    /*
-    BPU_T_Mecs_Ctx *ctx = NULL;
-    BPU_T_UN_Mecs_Params params;
-    BPU_T_GF2_Vector *ct, *oldpt, *newpt;
-    char allocatedVectors = 0;
-    srand(time(NULL));
-    int m = 4801;
-    int n0 = 2;
-    int w = 90;
-    int t = 100;
-    if (BPU_mecsInitParamsQcmdpc(&params, m, n0, w, t)) {  // Tomaskove parametre pre bg dekoder: 11779, 2, 142, 134
-    //if (BPU_mecsInitParamsQcmdpc(&params, 7, 2, 6, 1)) {
-        return -1;
-    }
-    if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
-        BPU_mecsFreeParamsQcmdpc(&params);
-        return -1;
-    }
-    if (BPU_mecsGenKeyPair(ctx)) {
-        goto end;
-    }
-
-    BPU_gf2VecMalloc(&ct, ctx->ct_len);   // these allocations may fail...
-    BPU_gf2VecMalloc(&oldpt, ctx->pt_len);
-    BPU_gf2VecMalloc(&newpt, ctx->pt_len);
-    allocatedVectors = 1;
-    BPU_gf2VecRand(oldpt, 0);
-
-    //printf("%d %d\n", ctx->code_spec->qcmdpc->w, ctx->code_spec->qcmdpc->n0);
-
-    // generate error vector e
-    if (BPU_gf2VecWithDist(ctx->code_ctx->e, ctx->code_ctx->t,t)){
-        BPU_printError("can not init rand vector");
-        goto end;
-    }
-
-    if (BPU_mecsEncrypt(ct, oldpt, ctx)) {
-        BPU_printError("Failed to encrypt plaintext!\n");
-        goto end;
-    }
-
-    clock_t start, end;
-    double time_used;
-
-    // set decoder_id for selection of decoder
-    // decoder_id = 0   ---  Algorithm E, ver 2
-    // decoder_id = 1   ---  REMP-1, ver 2
-    // decoder_id = 2   ---  REMP-2  ver 2
-    ctx->code_ctx->decoder_id = 0;
-    start = clock();
-    int ret = BPU_mecsQcmdpcDecrypt(newpt, ct, ctx->code_ctx);
-    end = clock();
-    time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-
-    //BPU_printGf2Vec(newpt);
-    if (0 == ret) {
-        fprintf(stderr, "Decryption success!\n");
-    } else {
-        fprintf(stderr, "Decryption FAILURE!!!\n");
-    }
-    fprintf(stderr, "Time taken: %f \n", time_used);
-
-    end:
-    BPU_mecsFreeCtx(&ctx);
-    BPU_mecsFreeParamsQcmdpc(&params);
-    if (allocatedVectors) {
-        BPU_gf2VecFree(&ct);
-        BPU_gf2VecFree(&oldpt);
-        BPU_gf2VecFree(&newpt);
-    }
-    //fclose(file);
-     */
-    return 0;
-}
-
-int maine(int argc, char **argv){
-    BPU_T_Mecs_Ctx *ctx = NULL;
-    BPU_T_UN_Mecs_Params params;
-    BPU_T_GF2_Vector *ct, *oldpt, *newpt;
-    char allocatedVectors = 0;
-
-    time_t tt;
-    srand((unsigned )time(&tt));
-    //srand(time(NULL));
-
-    int m = 4801;
-    int n0 = 2;
-    int w = 90;
-    int t = 100;
-
-    if (BPU_mecsInitParamsQcmdpc(&params, m, n0, w, t)) {  // Tomaskove parametre pre bg dekoder: 11779, 2, 142, 134
-        //if (BPU_mecsInitParamsQcmdpc(&params, 7, 2, 6, 1)) {
-        return -1;
-    }
-    if (BPU_mecsInitCtx(&ctx, &params, BPU_EN_MECS_BASIC_QCMDPC)) {
-        BPU_mecsFreeParamsQcmdpc(&params);
-        return -1;
-    }
-    if (BPU_mecsGenKeyPair(ctx)) {
-        goto end;
-    }
-    ctx->code_ctx->decoder_id = 1;
-    BPU_gf2VecMalloc(&ct, ctx->ct_len);   // these allocations may fail...
-    BPU_gf2VecMalloc(&oldpt, ctx->pt_len);
-    BPU_gf2VecMalloc(&newpt, ctx->pt_len);
-    allocatedVectors = 1;
-    BPU_gf2VecRand(oldpt, 0);
-
-    //printf("%d %d\n", ctx->code_spec->qcmdpc->w, ctx->code_spec->qcmdpc->n0);
-
-    // generate error vector e
-    if (BPU_gf2VecWithDist(ctx->code_ctx->e, ctx->code_ctx->t,t)){
-        BPU_printError("can not init rand vector");
-        goto end;
-    }
-
-    if (BPU_mecsEncrypt(ct, oldpt, ctx)) {
-        BPU_printError("Failed to encrypt plaintext!\n");
-        goto end;
-    }
-
-    clock_t start, end;
-    double time_used;
-
-    // set decoder_id for selection of decoder
-    // decoder_id = 0   ---  Algorithm E, ver 2
-    // decoder_id = 1   ---  REMP-1, ver 2
-    // decoder_id = 2   ---  REMP-2  ver 2
-    ctx->code_ctx->decoder_id = 1;
-    start = clock();
-    int ret = BPU_mecsQcmdpcDecrypt(newpt, ct, ctx->code_ctx);
-    end = clock();
-    time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-
-    //BPU_printGf2Vec(newpt);
-    if (0 == ret) {
-        fprintf(stderr, "Decryption success!\n");
-    } else {
-        fprintf(stderr, "Decryption FAILURE!!!\n");
-    }
-    fprintf(stderr, "Time taken: %f \n", time_used);
-
-    end:
-    BPU_mecsFreeCtx(&ctx);
-    BPU_mecsFreeParamsQcmdpc(&params);
-    if (allocatedVectors) {
-        BPU_gf2VecFree(&ct);
-        BPU_gf2VecFree(&oldpt);
-        BPU_gf2VecFree(&newpt);
-    }
 
     return 0;
 }

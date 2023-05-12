@@ -189,6 +189,7 @@ int BPU_mecsQcmdpcDecode5_2(BPU_T_GF2_Vector * plainTextVector,
 /**
  * Decoding algorithm E for QC-MDPC codes capable of decode cipher_text.
  * Algorithm E from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Syndrome check happens after Imax iterations.
  * @param  plainTextVector   output plaintext vector
  * @param  cipher_text input cipher text
  * @param  ctx 		   QC-MDPC McEliece context
@@ -201,7 +202,8 @@ int BPU_mecsQcmdpcDecodeE(BPU_T_GF2_Vector * plainTextVector,
 
 /**
  * Decoding algorithm E for QC-MDPC codes capable of decode cipher_text.
- * Algorithm E Variant 2 from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Algorithm E from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Includes syndrome checks after every iteration.
  * @param  plainTextVector   output plaintext vector
  * @param  cipher_text input cipher text
  * @param  ctx 		   QC-MDPC McEliece context
@@ -215,6 +217,7 @@ int BPU_mecsQcmdpcDecodeE_2(BPU_T_GF2_Vector * plainTextVector,
 /**
  * Decoding algorithm REMP-1 for QC-MDPC codes capable of decode cipher_text.
  * First Algorithm E modification from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Syndrome check happens after Imax iterations.
  * @param  plainTextVector   output plaintext vector
  * @param  cipher_text input cipher text
  * @param  ctx 		   QC-MDPC McEliece context
@@ -226,7 +229,8 @@ int BPU_mecsQcmdpcDecodeREMP1(BPU_T_GF2_Vector * plainTextVector,
 
 /**
  * Decoding algorithm REMP-1 for QC-MDPC codes capable of decode cipher_text.
- * First Algorithm E modification (Variant 2) from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * First Algorithm E modification from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Includes syndrome checks after every iteration.
  * @param  plainTextVector   output plaintext vector
  * @param  cipher_text input cipher text
  * @param  ctx 		   QC-MDPC McEliece context
@@ -243,6 +247,7 @@ int BPU_mecsQcmdpcDecodeREMP1_2(BPU_T_GF2_Vector * plainTextVector,
 /**
  * Decoding algorithm REMP-2 for QC-MDPC codes capable of decode cipher_text.
  * Second Algorithm E modification from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Syndrome check happens after Imax iterations.
  * @param  plainTextVector   output plaintext vector
  * @param  cipher_text input cipher text
  * @param  ctx 		   QC-MDPC McEliece context
@@ -255,7 +260,8 @@ int BPU_mecsQcmdpcDecodeREMP2(BPU_T_GF2_Vector * plainTextVector,
 
 /**
  * Decoding algorithm REMP-2 for QC-MDPC codes capable of decode cipher_text.
- * Second Algorithm E modification (Variant 2)from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Second Algorithm E modification from Bartz and Liva (https://arxiv.org/pdf/1801.05659.pdf)
+ * Includes syndrome checks after every iteration.
  * @param  plainTextVector   output plaintext vector
  * @param  cipher_text input cipher text
  * @param  ctx 		   QC-MDPC McEliece context
@@ -277,6 +283,64 @@ int BPU_mecsQcmdpcDecodeREMP2_2(BPU_T_GF2_Vector * plainTextVector,
 void BPU_mecsQcmdpcCalcSyndrom(BPU_T_GF2_Vector * syndrom,
                                const BPU_T_GF2_Vector * cipher_text,
                                const struct _BPU_T_Code_Ctx *ctx);
+
+
+/**
+ * Convert bit from (0, 1) to (1, -1).
+ * This is used in Algorithm E, REMP-1, and REMP-2, both variants.
+ * @param ciphertext   vector containing (0, 1) bits
+ * @param index        index of bit to be converted
+ * @return             1 if bit is 0
+ *                     -1 if bit is 1
+ */
+int8_t BPU_mecsQcmdpcConvertFromCiphertextBit(const BPU_T_GF2_Vector* ciphertext, uint16_t index);
+
+
+/**
+ * Convert bit from (-1, 0, 1) to (0, 1).
+ * This is used in Algorithm E, REMP-1, and REMP-2, both variants.
+ * Use if statement for -1 value as it cannot be properly converted.
+ * @param val          value of bit to be converted
+ * @return             0 if bit is 1
+ *                     1 if bit is -1
+ *                     -1 if bit is 0
+ */
+int8_t BPU_mecsQcmdpcConvertToCiphertextBit(int8_t val);
+
+
+/**
+ * Aloccate 2D Int8_t array of size rows x cols.
+ * Call BPU_mecsFreeMatrixInt8t to free this array.
+ * @param rows         number of rows
+ * @param cols         number of columns
+ * @return             allocated 2D array of size rows x cols
+ */
+int8_t ** BPU_mecsAllocMatrixInt8t(size_t rows, size_t cols);
+
+
+/**
+ * Free 2D Int8_t array
+ * @param mat          matrix to be freed
+ * @param rows         number of rows
+ */
+void BPU_mecsFreeMatrixInt8t(int8_t ** mat, size_t rows);
+
+
+/**
+ * Aloccate 2D uint32_t array of size rows x cols.
+ * Call BPU_mecsFreeMatrixUint32t to free this array.
+ * @param rows         number of rows
+ * @param cols         number of columns
+ * @return             allocated 2D array of size rows x cols
+ */
+uint32_t ** BPU_mecsAllocMatrixUint32t(size_t rows, size_t cols);
+
+/**
+ * Free 2D uint32_t array
+ * @param mat          matrix to be freed
+ * @param rows         number of rows
+ */
+void BPU_mecsFreeMatrixUint32t(uint32_t ** mat, size_t rows);
 
 /**
  * Calc p_i+1.
